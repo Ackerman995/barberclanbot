@@ -20,7 +20,7 @@ public class TriggersForBotServiceImpl implements TriggersForBotService {
     private final TelegramWebhookConfiguration telegramWebhookConfiguration;
     private final RedisServiceImpl redisService;
 
-    private final static String BOT_USERNAME = "papa_blinov_bot";
+    private final static String BOT_USERNAME = "PapaBlinovBot";
 
     private final static String START_MESSAGE = """
             Привет! Это бот компании "Папа Блинов". Наша компания специализируется на изгготовлении и продаже блинов и мы открыты к сотрудничеству.
@@ -142,7 +142,7 @@ public class TriggersForBotServiceImpl implements TriggersForBotService {
          */
         if (chatType.equals("private")) {
             return true;
-        } else if (chatType.equals("supergroup")) {
+        } else if (chatType.equals("supergroup") || chatType.equals("group")) {
             var replyToMessage = payload.getMessage().getReplyToMessage();
 
             Long botId = null;

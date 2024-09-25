@@ -76,9 +76,11 @@ public class TelegramWebhookConfiguration extends TelegramWebhookBot {
     }
 
     public void sendResponseMessage(String chatId, String text, Long replyToMessageId) {
+        String cleanedOutput = text.replaceAll("【.*?】", "");
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText(text);
+        message.setText(cleanedOutput);
+        message.enableMarkdown(true);
 
         if (replyToMessageId != null) {
             message.setReplyToMessageId(replyToMessageId.intValue());

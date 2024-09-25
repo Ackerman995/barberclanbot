@@ -23,7 +23,7 @@ public class WebhookController {
      */
     @PostMapping("")
     public ResponseEntity<String> handleWebhook(
-//            @RequestHeader Map<String, String> headers,
+            @RequestHeader Map<String, String> headers,
             @RequestBody String payload
     ) {
         telegramService.getNewMessagesFromWebhook(payload);

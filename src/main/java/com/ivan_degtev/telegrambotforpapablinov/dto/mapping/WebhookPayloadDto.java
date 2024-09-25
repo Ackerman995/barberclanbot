@@ -1,11 +1,14 @@
 package com.ivan_degtev.telegrambotforpapablinov.dto.mapping;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.List;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class WebhookPayloadDto {
 
     @JsonProperty("update_id")
@@ -24,6 +27,7 @@ public class WebhookPayloadDto {
     private ChatDto senderChat; // Для обработки системных сообщений
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class MessageDto {
 
         @JsonProperty("message_id")
@@ -72,6 +76,7 @@ public class WebhookPayloadDto {
     }
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class LinkPreviewOptions {
         @JsonProperty("url")
         private String url;
@@ -80,6 +85,7 @@ public class WebhookPayloadDto {
      * Класс для хранения данных об отрпавленном(в нашей логике только ботом) файлах.
      */
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Document {
         @JsonProperty("file_name")
         private String fileName;
@@ -94,6 +100,7 @@ public class WebhookPayloadDto {
     }
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ChatMemberUpdateDto {
 
         private ChatDto chat;
@@ -114,6 +121,7 @@ public class WebhookPayloadDto {
     Класс нужен для добавления участников группы, как админинов и разжалования
      */
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ChatMemberDto {
 
         private UserDto user;
@@ -174,6 +182,7 @@ public class WebhookPayloadDto {
     }
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class UserDto {
         private Long id;
 
@@ -196,6 +205,7 @@ public class WebhookPayloadDto {
     }
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ChatDto {
         private Long id;
 
@@ -212,9 +222,13 @@ public class WebhookPayloadDto {
 
         @JsonProperty("is_premium")
         private String isPremium;
+
+        @JsonProperty("all_members_are_administrators")
+        private Boolean allMembersAreAdministrators;
     }
 
     @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class EntityDto {
         private int offset;
         private int length;
