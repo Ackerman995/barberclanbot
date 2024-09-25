@@ -30,4 +30,5 @@ services:
 #      NOTION_API_TOKEN: ${NOTION_API_TOKEN}
 #      NGROK_URL: ${NGROK_URL}
     volumes:
+      - ./apps:/opt/app/app
       - app_files:/app/files
