@@ -2,7 +2,7 @@ version: "3.9"
 
 volumes:
   redis_data:
-#  app_files:
+  app_files:
 
 services:
   redis:
@@ -29,5 +29,5 @@ services:
 #      OPEN_AI_TOKEN: ${OPEN_AI_TOKEN}
 #      NOTION_API_TOKEN: ${NOTION_API_TOKEN}
 #      NGROK_URL: ${NGROK_URL}
-#    volumes:
-#      - app_files:/app/files
+    volumes:
+      - app_files:/app/files
