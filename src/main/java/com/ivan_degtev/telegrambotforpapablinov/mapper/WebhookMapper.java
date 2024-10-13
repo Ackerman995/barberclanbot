@@ -15,6 +15,7 @@ public class WebhookMapper {
     private final ObjectMapper objectMapper;
 
     public WebhookPayloadDto convertStringToWebhookPayload(String stringPayload) {
+        log.info("raw payload: {}" , stringPayload);
         try {
             WebhookPayloadDto request = objectMapper.readValue(stringPayload, WebhookPayloadDto.class);
             return request;

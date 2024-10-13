@@ -21,7 +21,7 @@ public class WebhookController {
      * На эту ручку будут приходить все входщие и исходящие сообщения с вотсапа, переброшенные сюда через чатпуш -> ngrok
      * Нужно в дальнейшей логике корректно фильтровать и не обрабатывать через LLM исходящие сообшения
      */
-    @PostMapping("")
+    @PostMapping("/webhook")
     public ResponseEntity<String> handleWebhook(
             @RequestHeader Map<String, String> headers,
             @RequestBody String payload

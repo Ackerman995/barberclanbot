@@ -168,7 +168,7 @@ public class TriggersForBotServiceImpl implements TriggersForBotService {
     public Long getIdMessageForReplay(WebhookPayloadDto payload) {
         if (payload.getMessage().getChat().getType().equals("private")) {
             return null;
-        } else if (payload.getMessage().getChat().getType().equals("supergroup")) {
+        } else if (payload.getMessage().getChat().getType().equals("supergroup") || payload.getMessage().getChat().getType().equals("group")) {
             return payload.getMessage().getMessageId();
         } else {
             return null;

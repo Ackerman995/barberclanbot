@@ -216,6 +216,7 @@ public class WebhookPayloadDto {
         private String lastName;
 
         private String username;
+        @JsonProperty("type")
         private String type;
 
         private String title;
