@@ -8,7 +8,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.Objects;
 
 @Service
 @Slf4j
@@ -45,9 +44,10 @@ public class RedisServiceImpl implements UpdateIdService {
      * Возвращает текущий тип диалога для дальнейше работой с ллм
      */
     public TYPE_REQUEST getUserRequestType(String fromId) {
-        TYPE_REQUEST typeRequest =  TYPE_REQUEST.valueOf(Objects.requireNonNull(redisTemplate.opsForValue().get(TYPE_REQUEST_FROM_ID + fromId)).toString());
+        Object typeRequestObject = redisTemplate.opsForValue().get(TYPE_REQUEST_FROM_ID + fromId);
 
-        if (typeRequest != null) {
+        if (typeRequestObject != null) {
+            TYPE_REQUEST typeRequest = TYPE_REQUEST.valueOf(typeRequestObject.toString());
             log.info("Найден тип запроса для пользователя {}: {}", fromId, typeRequest);
             return typeRequest;
         } else {
