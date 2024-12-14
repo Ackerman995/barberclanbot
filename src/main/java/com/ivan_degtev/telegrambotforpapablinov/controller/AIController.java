@@ -33,8 +33,8 @@ public class AIController {
                 .body(response);
     }
     @PostMapping(path = "/summary/{threadId}")
-    public ResponseEntity<String> createSummary(@PathVariable String threadId) {
-        String response = openAiMemoryControlService.generateManualSummary(threadId);
+    public ResponseEntity<String> createSummary(@PathVariable String threadId, String fromId) {
+        String response = openAiMemoryControlService.generateManualSummary(threadId, fromId);
         return ResponseEntity
                 .ok()
                 .body(response);

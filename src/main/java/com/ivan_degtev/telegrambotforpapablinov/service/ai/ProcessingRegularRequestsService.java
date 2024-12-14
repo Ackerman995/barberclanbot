@@ -35,7 +35,7 @@ public class ProcessingRegularRequestsService {
     private final ProcessingSearchRequestsService processingSearchRequestsService;
     private final RedisServiceImpl redisService;
 
-    private final static String ASSISTANT_ID = "asst_sjTPLRG9rc6VvOgINmjn5mOK";
+    private final static String ASSISTANT_ID = "asst_nPqCeUlu5QPRx9OhhrRKmSLB";
     private final static String SYSTEM_MESSAGE_FOR_SEARCH_ID_FILES = """
             Пользователь ищет актуальные файлы из векторного хранилища по своему запросу. Тебе нужно проанализировать его запрос, найти 5 самых подходящих файла 
             и выдать только их внутренние названия и id без изменений! Выдать нужно в формате json, но без изменения названий файлов! Нужно записать в json название
@@ -82,16 +82,24 @@ public class ProcessingRegularRequestsService {
 //                threadId = userThreads.get(fromId);
 //            }
             String threadId = redisService.getUserThread(String.valueOf(fromId));
+            System.out.println("Retrieved Thread ID from Redis: " + threadId);
             TYPE_REQUEST currentTypeRequest = redisService.getUserRequestType(String.valueOf(fromId));
 
             if (threadId == null) {
                 String jsonResponseCreateThread = createThread(fromId);
+                System.out.println("Create Thread Response: " + jsonResponseCreateThread);
+
                 threadId = openAiMapper.extractIdAfterCreateResponseMessage(jsonResponseCreateThread);
+                System.out.println("Extracted Thread ID: " + threadId);
 
                 redisService.setUserThread(String.valueOf(fromId), threadId);
                 addAndCleanHistoryMessage(String.valueOf(fromId));
             } else {
                 addAndCleanHistoryMessage(String.valueOf(fromId));
+            }
+
+            if (threadId == null || threadId.isEmpty()) {
+                throw new IllegalArgumentException("Thread ID is null or empty");
             }
 
             //here we are creating LLM instructions to retrieve only the referenced files names without distorting them aanyhow
@@ -137,7 +145,7 @@ public class ProcessingRegularRequestsService {
 //            redisService.incrementUserMessageCount(fromId);
             redisService.incrementUserMessageCount(fromId, String.valueOf(currentMessageCount + 1));
         } else if (currentMessageCount == 10) {
-            String summaryMessages = openAiMemoryControlService.generateManualSummary(redisService.getUserThread(fromId));
+            String summaryMessages = openAiMemoryControlService.generateManualSummary(redisService.getUserThread(fromId), fromId);
 
             deleteOldThread(fromId);
 
@@ -269,6 +277,7 @@ public class ProcessingRegularRequestsService {
      *     Метод для создания треда для конкретного пользователя
      */
     public String createThread(Long chatId) {
+        System.out.println("creating thread from chatid: " + chatId);
         return webClient.post()
                 .uri("/v1/threads")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + openAiToken)
@@ -291,6 +300,7 @@ public class ProcessingRegularRequestsService {
         } else {
             messages = Map.of("role", "user", "content", userMessage);
         }
+        System.out.println("Fetching messages for Thread ID: " + threadId);
 
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder
@@ -359,6 +369,8 @@ public class ProcessingRegularRequestsService {
      * @return
      */
     public String getMessages(String threadId) {
+        System.out.println("Fetching messages for Thread ID: " + threadId);
+        try {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v1/threads/{threadId}/messages")
@@ -367,7 +379,13 @@ public class ProcessingRegularRequestsService {
                 .header("OpenAI-Beta", "assistants=v2")
                 .retrieve()
                 .bodyToMono(String.class)
-                .block();
+                .block();}
+            catch (WebClientResponseException e) {
+            System.err.println("Error fetching messages for Thread ID: " + threadId);
+            System.err.println("Status Code: " + e.getStatusCode());
+            System.err.println("Response Body: " + e.getResponseBodyAsString());
+            throw e;
+        }
     }
 
     public String getMessage(String threadId, String messageId) {
@@ -380,6 +398,33 @@ public class ProcessingRegularRequestsService {
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
+    }
+
+    public String ensureValidThread(String userId, String threadId) {
+        try {
+            // Проверяем доступность треда
+            webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/v1/threads/{threadId}/messages")
+                            .build(threadId))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + openAiToken)
+                    .header("OpenAI-Beta", "assistants=v2")
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            return threadId;
+        } catch (WebClientResponseException.NotFound e) {
+            // Тред недоступен, создаем новый
+            System.out.println("Thread not found, creating a new one...");
+
+            String jsonResponseCreateThread = createThread(Long.parseLong(userId));
+            System.out.println("Create Thread Response: " + jsonResponseCreateThread);
+
+            String newThreadId = openAiMapper.extractIdAfterCreateResponseMessage(jsonResponseCreateThread);
+            System.out.println("Extracted Thread ID: " + newThreadId);
+            redisService.setUserThread(userId, newThreadId);
+            return newThreadId;
+        }
     }
 
 }

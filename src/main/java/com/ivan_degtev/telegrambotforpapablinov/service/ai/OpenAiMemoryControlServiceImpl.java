@@ -20,7 +20,7 @@ public class OpenAiMemoryControlServiceImpl {
     private final ProcessingRegularRequestsService processingRegularRequestsService;
     private final OpenAiMapper openAiMapper;
 
-    private final static String assistantId = "asst_TMo9HU85ItAzi87f2fMeSheQ";
+    private final static String assistantId = "asst_nPqCeUlu5QPRx9OhhrRKmSLB";
 
     public OpenAiMemoryControlServiceImpl(
             @Value("${openai.token}") String openAiToken,
@@ -42,8 +42,8 @@ public class OpenAiMemoryControlServiceImpl {
      * @param threadId
      * @return
      */
-    public String generateManualSummary(String threadId) {
-        StringBuilder threadMessages = getThreadMessages(threadId);
+    public String generateManualSummary(String threadId, String fromId) {
+        StringBuilder threadMessages = getThreadMessages(threadId, fromId);
 
         String summaryResponse = webClient.post()
                 .uri("/v1/chat/completions")
@@ -70,8 +70,9 @@ public class OpenAiMemoryControlServiceImpl {
      * @param threadId
      * @return
      */
-    private StringBuilder getThreadMessages(String threadId) {
-        String allMessages = processingRegularRequestsService.getMessages(threadId);
+    private StringBuilder getThreadMessages(String threadId, String fromId) {
+        String validThread = processingRegularRequestsService.ensureValidThread(fromId, threadId);
+        String allMessages = processingRegularRequestsService.getMessages(validThread);
         StringBuilder mapWithMessages = openAiMapper.extractRoleAndContentFromMemory(allMessages);
         return mapWithMessages;
     }

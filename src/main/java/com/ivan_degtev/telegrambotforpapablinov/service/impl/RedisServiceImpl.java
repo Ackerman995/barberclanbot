@@ -67,6 +67,7 @@ public class RedisServiceImpl implements UpdateIdService {
     // Сохранение треда пользователя
     public void setUserThread(String fromId, String threadId) {
         redisTemplate.opsForValue().set(ID_ACTUAL_THREAD + fromId, threadId);
+        log.info("Saved Thread ID in Redis: " + threadId);
     }
 
     // Получение количества сообщений пользователя
