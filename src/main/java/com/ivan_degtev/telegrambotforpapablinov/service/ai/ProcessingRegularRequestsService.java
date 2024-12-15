@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -214,7 +215,38 @@ public class ProcessingRegularRequestsService {
      * @return
      */
     public String createNewThreadWithSummary(String summary) {
-        String response = webClient.post()
+        try {
+            // Попытка создать новый тред
+            String response = webClient.post()
+                    .uri("/v1/threads")
+                    .header("Authorization", "Bearer " + openAiToken)
+                    .header("Content-Type", "application/json")
+                    .header("OpenAI-Beta", "assistants=v2")
+                    .bodyValue(Map.of(
+                            "assistant_id", ASSISTANT_ID,
+                            "messages", List.of(
+                                    Map.of("role", "assistant", "content", "Вот что мы обсудили на данный момент: " + summary)
+                            )
+                    ))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            return response; // Возвращаем ответ, если создание прошло успешно
+        } catch (WebClientResponseException e) {
+            if (e.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                System.out.println("Bad Request: " + e.getResponseBodyAsString());
+            } else {
+                System.out.println("Error while creating thread: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            }
+            System.out.println("Creating a new thread due to an error...");
+            return createNewThreadWithFallbackSummary(summary); // Метод для создания нового треда
+        }
+    }
+
+    private String createNewThreadWithFallbackSummary(String summary) {
+        // Создание нового треда с fallback-логикой или другим содержимым
+        String fallbackContent = "К сожалению, возникла ошибка. Вот альтернативный контент: " + summary;
+        return webClient.post()
                 .uri("/v1/threads")
                 .header("Authorization", "Bearer " + openAiToken)
                 .header("Content-Type", "application/json")
@@ -222,14 +254,14 @@ public class ProcessingRegularRequestsService {
                 .bodyValue(Map.of(
                         "assistant_id", ASSISTANT_ID,
                         "messages", List.of(
-                                Map.of("role", "assistant", "content", "Вот что мы обсудили на данный момент: " + summary)
+                                Map.of("role", "assistant", "content", fallbackContent)
                         )
                 ))
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
-        return response;
     }
+
 
     public String deleteOldThread(String fromId) {
         String threadId = redisService.getUserThread(fromId);
