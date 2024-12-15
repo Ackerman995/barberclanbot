@@ -66,35 +66,41 @@ public class ProcessingSearchRequestsService {
         Path directoryPath = Paths.get(PATH_FOR_SAVE_FILES);
         List<String> possibleFileNames = prepareNamesWithAllExtensions(fileName);
 
-        try (Stream<Path> secondFilesStream = Files.list(directoryPath)) {
-            Optional<File> matchingFile = secondFilesStream
+        try (Stream<Path> filesStream = Files.list(directoryPath)) {
+            List<File> filesList = filesStream
                     .map(Path::toFile)
                     .filter(File::isFile)
-                    .filter(file -> {
-                        return possibleFileNames.stream()
-                                .anyMatch(possibleName -> file.getName().equalsIgnoreCase(possibleName));
-                    })
-                    .findFirst();
+                    .collect(Collectors.toList());
 
-            if (matchingFile.isPresent()) {
-                File file = matchingFile.get();
-                log.info("Файл найден: {}", file.getName());
-                telegramWebhookConfiguration.sendDocument(chatId, file, replyToMessageId);
-            } else {
-                log.warn("Файл не найден: {}", fileName);
+            // Логируем все файлы в директории
+
+            // Поиск файлов
+            for (String possibleName : possibleFileNames) {
+                boolean fileFound = filesList.stream()
+                        .anyMatch(file -> file.getName().equalsIgnoreCase(possibleName.trim())); // trim убирает пробелы
+
+                if (fileFound) {
+                    log.info("Файл найден: {}", possibleName);
+                    // Отправка файла в Telegram
+                    telegramWebhookConfiguration.sendDocument(chatId, new File(directoryPath + File.separator + possibleName), replyToMessageId);
+                } else {
+                    log.warn("Файл не найден: {}", possibleName);
+                }
             }
         } catch (IOException e) {
             log.error("Ошибка при поиске файлов: {}", e.getMessage());
         }
     }
+
     private List<String> prepareNamesWithAllExtensions(String fileName) {
         String baseFileName = fileName.substring(0, fileName.lastIndexOf('.'));
         String fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1);
-
+        baseFileName = baseFileName.replace(" ", "_");
         log.info("Зашёл в метод двойного названию, имя файла: и расширение: {}, {}", fileName, fileExtension);
 
         List<String> possibleFileNames = new ArrayList<>();
-        possibleFileNames.add(fileName);
+        possibleFileNames.add(baseFileName + "." + fileExtension); // Добавляем имя файла с символом подчеркивания
+
 
         if (fileExtension.equalsIgnoreCase("doc")) {
             possibleFileNames.add(baseFileName + ".docx");

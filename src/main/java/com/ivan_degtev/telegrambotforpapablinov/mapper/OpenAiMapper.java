@@ -105,6 +105,8 @@ public class OpenAiMapper {
      */
     public Map<String, String> extractFileIds(String response) {
         try {
+            log.info("Received response for file ID extraction: {}", response);
+
             Pattern jsonPattern = Pattern.compile("\\{.*?\\}", Pattern.DOTALL);
             Matcher matcher = jsonPattern.matcher(response);
 
