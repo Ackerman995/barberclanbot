@@ -105,7 +105,14 @@ public class ProcessingSearchRequestsService {
             possibleFileNames.add(baseFileName + ".xlsx");
         } else if (fileExtension.equalsIgnoreCase("xlsx")) {
             possibleFileNames.add(baseFileName + ".xls");
+        } else if (fileExtension.equalsIgnoreCase("txt")) {
+            possibleFileNames.add(baseFileName + ".txt");
+        } else if (fileExtension.equalsIgnoreCase("ppt")) {
+            possibleFileNames.add(baseFileName + ".pptx");
+        } else if (fileExtension.equalsIgnoreCase("pptx")) {
+            possibleFileNames.add(baseFileName + ".ppt");
         }
+
 
         log.info("Итоговая мапа с разными вариантами названий с расширениями: {}",
                 possibleFileNames.stream().collect(Collectors.joining(", ")));
