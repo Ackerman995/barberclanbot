@@ -246,20 +246,25 @@ public class ProcessingRegularRequestsService {
     private String createNewThreadWithFallbackSummary(String summary) {
         // Создание нового треда с fallback-логикой или другим содержимым
         String fallbackContent = "К сожалению, возникла ошибка. Вот альтернативный контент: " + summary;
-        return webClient.post()
-                .uri("/v1/threads")
-                .header("Authorization", "Bearer " + openAiToken)
-                .header("Content-Type", "application/json")
-                .header("OpenAI-Beta", "assistants=v2")
-                .bodyValue(Map.of(
-                        "assistant_id", ASSISTANT_ID,
-                        "messages", List.of(
-                                Map.of("role", "assistant", "content", fallbackContent)
-                        )
-                ))
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();
+        try {
+            return webClient.post()
+                    .uri("/v1/threads")
+                    .header("Authorization", "Bearer " + openAiToken)
+                    .header("Content-Type", "application/json")
+                    .header("OpenAI-Beta", "assistants=v2")
+                    .bodyValue(Map.of(
+                            "messages", List.of(
+                                    Map.of("role", "assistant", "content", fallbackContent)
+                            )
+                    ))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.error("Ошибка при создании треда: {}. Ответ API: {}", e.getMessage(), e.getResponseBodyAsString());
+            throw e;
+        }
+
     }
 
 
