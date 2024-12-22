@@ -119,6 +119,7 @@ public class ProcessingSearchRequestsService {
             possibleFileNames.add(baseFileName + ".ppt");
         } else if (fileExtension.equalsIgnoreCase("pdf")) {
             possibleFileNames.add(baseFileName + ".xls");
+            possibleFileNames.add(baseFileName + ".xlsx");
         }
             log.info("Итоговая мапа с разными вариантами названий с расширениями: {}",
                     possibleFileNames.stream().collect(Collectors.joining(", ")));

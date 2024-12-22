@@ -408,16 +408,16 @@ public class ProcessingRegularRequestsService {
     public String getMessages(String threadId) {
         System.out.println("Fetching messages for Thread ID: " + threadId);
         try {
-        return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v1/threads/{threadId}/messages")
-                        .build(threadId))
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + openAiToken)
-                .header("OpenAI-Beta", "assistants=v2")
-                .retrieve()
-                .bodyToMono(String.class)
-                .block();}
-            catch (WebClientResponseException e) {
+            return webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/v1/threads/{threadId}/messages")
+                            .build(threadId))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + openAiToken)
+                    .header("OpenAI-Beta", "assistants=v2")
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();}
+        catch (WebClientResponseException e) {
             System.err.println("Error fetching messages for Thread ID: " + threadId);
             System.err.println("Status Code: " + e.getStatusCode());
             System.err.println("Response Body: " + e.getResponseBodyAsString());
