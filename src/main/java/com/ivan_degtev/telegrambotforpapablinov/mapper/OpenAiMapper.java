@@ -188,4 +188,57 @@ public class OpenAiMapper {
 
         return null;
     }
+
+    public List<String> extractFileIds(String jsonString, String id) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode root = objectMapper.readTree(jsonString);
+
+        List<String> fileNames = new ArrayList<>();
+
+        // Проверяем, что JSON содержит объект с данными
+        if (root.has("data")) {
+            for (JsonNode messageNode : root.get("data")) {
+                // Сравниваем ID
+                if (messageNode.has("id") && messageNode.get("id").asText().equals(id)) {
+                    // Проходим по контенту
+                    JsonNode contentNode = messageNode.get("content");
+                    if (contentNode != null && contentNode.isArray()) {
+                        for (JsonNode contentItem : contentNode) {
+                            if (contentItem.has("text")) {
+                                JsonNode textNode = contentItem.get("text");
+                                if (textNode.has("annotations")) {
+                                    JsonNode annotationsNode = textNode.get("annotations");
+                                    if (annotationsNode.isArray()) {
+                                        for (JsonNode annotation : annotationsNode) {
+                                            if (annotation.has("file_citation") && annotation.get("file_citation").has("file_id")) {
+                                                fileNames.add(annotation.get("file_citation").get("file_id").asText());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return fileNames;
+    }
+
+    public List<String> extractFileNamesFromJson(List<String> jsonStrings) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<String> fileNames = new ArrayList<>();
+
+        for (String jsonString : jsonStrings) {
+            JsonNode root = objectMapper.readTree(jsonString);
+
+            if (root.has("filename")) {
+                fileNames.add(root.get("filename").asText());
+            }
+        }
+
+        return fileNames;
+    }
+
 }

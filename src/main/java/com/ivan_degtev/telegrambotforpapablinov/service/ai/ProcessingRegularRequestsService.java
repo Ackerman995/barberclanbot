@@ -38,11 +38,14 @@ public class ProcessingRegularRequestsService {
     private final RedisServiceImpl redisService;
 
     private final static String ASSISTANT_ID = "asst_nPqCeUlu5QPRx9OhhrRKmSLB";
-    private final static String SYSTEM_MESSAGE_FOR_SEARCH_ID_FILES = """
+   /* private final static String SYSTEM_MESSAGE_FOR_SEARCH_ID_FILES = """
             Пользователь ищет актуальные файлы из векторного хранилища по своему запросу. Тебе нужно проанализировать его запрос, найти 5 самых подходящих файла 
             и выдать только их внутренние названия и id без изменений! Выдать нужно в формате json, но без изменения названий файлов! Нужно записать в json название
             файла точь-в-точь, как оно называется в твоем внутреннем хранилище! 
             Пример: \"Имя файла во внутреннем хранилище.docx\":\"id_файла_в_хранилище\".
+            """;*/
+    private final static String SYSTEM_MESSAGE_FOR_SEARCH_ID_FILES = """
+            
             """;
 
     private final static Map<Long, String> userThreads = new HashMap<>();
@@ -127,7 +130,19 @@ public class ProcessingRegularRequestsService {
                     if (fileNames.isEmpty()) {
                         Map<String, String> filesData = openAiMapper.extractFileIds(responseLlm);
                         processingSearchRequestsService.preparingDataForDownloadingFiles(filesData, chatId, replayMessageId);
-                    } else {
+                    } else if (fileNames.stream().anyMatch(file -> file.equals("source"))) {
+                        List<String> files = new ArrayList<>();
+                        List<String> fileIds = openAiMapper.extractFileIds(jsonResponseGetMessages, responseIdAnswer);
+                        fileIds.forEach(file -> files.add(getFile(file)));
+                        System.out.println(files);
+                        List<String> fileNameList = openAiMapper.extractFileNamesFromJson(files);
+                        processingSearchRequestsService.sendMatchingFiles(fileNameList, chatId, replayMessageId);
+
+                    } else if (fileNames.stream().anyMatch(file -> file.contains("file-"))) {
+                        List<String> fileNameList = openAiMapper.extractFileNamesFromJson(fileNames);
+                        processingSearchRequestsService.sendMatchingFiles(fileNameList, chatId, replayMessageId);
+                    }
+                    else {
                         processingSearchRequestsService.sendMatchingFiles(fileNames, chatId, replayMessageId);
                     }
                     return;
@@ -476,4 +491,15 @@ public class ProcessingRegularRequestsService {
         }
     }
 
+    public String getFile(String fileId) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1/files/{file_id}")
+                        .build(fileId))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + openAiToken)
+                .header("OpenAI-Beta", "assistants=v2")
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+    }
 }
