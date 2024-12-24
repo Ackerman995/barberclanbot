@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -132,5 +133,59 @@ public class OpenAiMapper {
             log.error("Ошибка при парсинге ответа на запрос поиска файлов", e);
             return Collections.emptyMap();
         }
+    }
+
+    public List<String> extractFileNamesById(String jsonString, String id) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode root = objectMapper.readTree(jsonString);
+
+        List<String> fileNames = new ArrayList<>();
+
+        // Проверяем, что JSON содержит объект с данными
+        if (root.has("data")) {
+            for (JsonNode messageNode : root.get("data")) {
+                // Сравниваем ID
+                if (messageNode.has("id") && messageNode.get("id").asText().equals(id)) {
+                    // Проходим по контенту
+                    JsonNode contentNode = messageNode.get("content");
+                    if (contentNode != null && contentNode.isArray()) {
+                        for (JsonNode contentItem : contentNode) {
+                            if (contentItem.has("text")) {
+                                JsonNode textNode = contentItem.get("text");
+                                if (textNode.has("annotations")) {
+                                    JsonNode annotationsNode = textNode.get("annotations");
+                                    if (annotationsNode.isArray()) {
+                                        for (JsonNode annotation : annotationsNode) {
+                                            if (annotation.has("text")) {
+                                                String annotationText = annotation.get("text").asText();
+                                                String fileName = extractFileNameFromAnnotation(annotationText);
+                                                if (fileName != null) {
+                                                    fileNames.add(fileName);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return fileNames;
+    }
+
+    private static String extractFileNameFromAnnotation(String annotationText) {
+        // Регулярное выражение для извлечения содержимого внутри квадратных скобок, включая текст с пробелами и расширением файла
+        String pattern = "【.*?†(.*?)】";
+        java.util.regex.Pattern regex = java.util.regex.Pattern.compile(pattern);
+        java.util.regex.Matcher matcher = regex.matcher(annotationText);
+
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+
+        return null;
     }
 }

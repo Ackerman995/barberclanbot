@@ -59,13 +59,16 @@ public class ProcessingSearchRequestsService {
         }
     }
 
+    public void sendMatchingFiles(List<String> fileNames, String chatId, Long replyToMessageId) {
+        fileNames.forEach(fileName -> searchFiles(fileName, chatId, replyToMessageId));
+    }
+
     /**
      * Метод поиска файлов по имени
      */
     private void searchFiles(String fileName, String chatId, Long replyToMessageId) {
         Path directoryPath = Paths.get(PATH_FOR_SAVE_FILES);
         List<String> possibleFileNames = prepareNamesWithAllExtensions(fileName);
-
         try (Stream<Path> filesStream = Files.list(directoryPath)) {
             List<File> filesList = filesStream
                     .map(Path::toFile)

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -112,14 +113,23 @@ public class ProcessingRegularRequestsService {
 
             if (checkStatusReceivingResponse(threadId, responseRunId)) {
                 String jsonResponseGetMessages = getMessages(threadId);
+                log.info("jsonResponseGetMessages: {}", jsonResponseGetMessages);
                 String responseIdAnswer = openAiMapper.extractLatestMessageId(jsonResponseGetMessages);
+                log.info("responseIdAnswer {}", responseIdAnswer);
+
+                List<String> fileNames = openAiMapper.extractFileNamesById(jsonResponseGetMessages, responseIdAnswer);
+                log.info("File Names {}", fileNames);
 
                 String jsonResponseGetMessage = getMessage(threadId, responseIdAnswer);
                 String responseLlm = openAiMapper.extractDataFromLlmAnswer(jsonResponseGetMessage);
 
                 if (currentTypeRequest.equals(TYPE_REQUEST.SEARCH)) {
-                    Map<String, String> filesData = openAiMapper.extractFileIds(responseLlm);
-                    processingSearchRequestsService.preparingDataForDownloadingFiles(filesData, chatId, replayMessageId);
+                    if (fileNames.isEmpty()) {
+                        Map<String, String> filesData = openAiMapper.extractFileIds(responseLlm);
+                        processingSearchRequestsService.preparingDataForDownloadingFiles(filesData, chatId, replayMessageId);
+                    } else {
+                        processingSearchRequestsService.sendMatchingFiles(fileNames, chatId, replayMessageId);
+                    }
                     return;
                 }
                 log.info("Получил ответ от ллм по сути вопроса замапленный: {}", responseLlm);
@@ -128,6 +138,8 @@ public class ProcessingRegularRequestsService {
             }
         } catch (LlmQuerySyntaxException ex) {
             throw new LlmQuerySyntaxException("Ошибка в последовательности запросов к Open AI для работы с ассистентом");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
