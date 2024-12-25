@@ -16,10 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -59,7 +56,7 @@ public class ProcessingSearchRequestsService {
         }
     }
 
-    public void sendMatchingFiles(List<String> fileNames, String chatId, Long replyToMessageId) {
+    public void sendMatchingFiles(Set<String> fileNames, String chatId, Long replyToMessageId) {
         fileNames.forEach(fileName -> searchFiles(fileName, chatId, replyToMessageId));
     }
 
@@ -81,7 +78,7 @@ public class ProcessingSearchRequestsService {
 // Поиск файлов
             for (String possibleName : possibleFileNames) {
                 boolean fileFound = filesList.stream()
-                        .anyMatch(file -> file.getName().equalsIgnoreCase(possibleName.trim())); // trim убирает пробелы
+                        .anyMatch(file -> normalizeFileName(file.getName()).equalsIgnoreCase(normalizeFileName(possibleName)));
 
                 if (fileFound) {
                     log.info("Файл найден: {}", possibleName);
@@ -98,13 +95,24 @@ public class ProcessingSearchRequestsService {
 
 
     private List<String> prepareNamesWithAllExtensions(String fileName) {
+        List<String> possibleFileNames = new ArrayList<>();
+        possibleFileNames.add(fileName);
+
+        if (!fileName.contains(".")) {
+            possibleFileNames.add(fileName + ".docx");
+            possibleFileNames.add(fileName + ".doc");
+            possibleFileNames.add(fileName + ".xlsx");
+            possibleFileNames.add(fileName + ".xls");
+            possibleFileNames.add(fileName + ".txt");
+            possibleFileNames.add(fileName + ".pdf");
+            possibleFileNames.add(fileName + ".txt");
+            return possibleFileNames;
+        }
+
         String baseFileName = fileName.substring(0, fileName.lastIndexOf('.'));
         String fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1);
 
         log.info("Зашёл в метод двойного названию, имя файла: и расширение: {}, {}", fileName, fileExtension);
-
-        List<String> possibleFileNames = new ArrayList<>();
-        possibleFileNames.add(fileName);
 
         if (fileExtension.equalsIgnoreCase("doc")) {
             possibleFileNames.add(baseFileName + ".docx");
@@ -116,6 +124,8 @@ public class ProcessingSearchRequestsService {
             possibleFileNames.add(baseFileName + ".xls");
         } else if (fileExtension.equalsIgnoreCase("txt")) {
             possibleFileNames.add(baseFileName + ".txt");
+            possibleFileNames.add(baseFileName + ".pdf");
+            possibleFileNames.add(baseFileName + ".cdr");
         } else if (fileExtension.equalsIgnoreCase("ppt")) {
             possibleFileNames.add(baseFileName + ".pptx");
         } else if (fileExtension.equalsIgnoreCase("pptx")) {
@@ -128,6 +138,19 @@ public class ProcessingSearchRequestsService {
                     possibleFileNames.stream().collect(Collectors.joining(", ")));
             return possibleFileNames;
         }
+
+    private String normalizeFileName(String fileName) {
+        if (fileName == null) {
+            return "";
+        }
+        String normalized = fileName
+                .trim()
+                .replaceAll("\\s+", " ")          // Объединяем последовательные пробелы
+                .replace('\u00A0', ' ')          // Заменяем неразрывные пробелы
+                .replaceAll("[\\p{Cntrl}]", ""); // Убираем управляющие символы
+        return normalized;
     }
+
+}
 
 

@@ -176,7 +176,7 @@ public class OpenAiMapper {
         return fileNames;
     }
 
-    private static String extractFileNameFromAnnotation(String annotationText) {
+    private String extractFileNameFromAnnotation(String annotationText) {
         // Регулярное выражение для извлечения содержимого внутри квадратных скобок, включая текст с пробелами и расширением файла
         String pattern = "【.*?†(.*?)】";
         java.util.regex.Pattern regex = java.util.regex.Pattern.compile(pattern);
@@ -226,9 +226,10 @@ public class OpenAiMapper {
         return fileNames;
     }
 
-    public List<String> extractFileNamesFromJson(List<String> jsonStrings) throws IOException {
+    public Set<String> extractFileNamesFromJson(Set<String> jsonStrings) throws IOException {
+        System.out.println(jsonStrings);
         ObjectMapper objectMapper = new ObjectMapper();
-        List<String> fileNames = new ArrayList<>();
+        Set<String> fileNames = new HashSet<>();
 
         for (String jsonString : jsonStrings) {
             JsonNode root = objectMapper.readTree(jsonString);

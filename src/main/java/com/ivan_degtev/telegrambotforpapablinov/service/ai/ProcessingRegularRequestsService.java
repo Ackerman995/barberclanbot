@@ -18,10 +18,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -120,7 +117,7 @@ public class ProcessingRegularRequestsService {
                 String responseIdAnswer = openAiMapper.extractLatestMessageId(jsonResponseGetMessages);
                 log.info("responseIdAnswer {}", responseIdAnswer);
 
-                List<String> fileNames = openAiMapper.extractFileNamesById(jsonResponseGetMessages, responseIdAnswer);
+                Set<String> fileNames = new HashSet<>(openAiMapper.extractFileNamesById(jsonResponseGetMessages, responseIdAnswer));
                 log.info("File Names {}", fileNames);
 
                 String jsonResponseGetMessage = getMessage(threadId, responseIdAnswer);
@@ -131,15 +128,17 @@ public class ProcessingRegularRequestsService {
                         Map<String, String> filesData = openAiMapper.extractFileIds(responseLlm);
                         processingSearchRequestsService.preparingDataForDownloadingFiles(filesData, chatId, replayMessageId);
                     } else if (fileNames.stream().anyMatch(file -> file.equals("source"))) {
-                        List<String> files = new ArrayList<>();
-                        List<String> fileIds = openAiMapper.extractFileIds(jsonResponseGetMessages, responseIdAnswer);
+                        Set<String> files = new HashSet<>();
+                        Set<String> fileIds = new HashSet<>(openAiMapper.extractFileIds(jsonResponseGetMessages, responseIdAnswer));
+
                         fileIds.forEach(file -> files.add(getFile(file)));
                         System.out.println(files);
-                        List<String> fileNameList = openAiMapper.extractFileNamesFromJson(files);
+
+                        Set<String> fileNameList = new HashSet<>(openAiMapper.extractFileNamesFromJson(files));
                         processingSearchRequestsService.sendMatchingFiles(fileNameList, chatId, replayMessageId);
 
-                    } else if (fileNames.stream().anyMatch(file -> file.contains("file-"))) {
-                        List<String> fileNameList = openAiMapper.extractFileNamesFromJson(fileNames);
+                    } else if (fileNames.stream().anyMatch(file -> file.contains("file"))) {
+                        Set<String> fileNameList = openAiMapper.extractFileNamesFromJson(fileNames);
                         processingSearchRequestsService.sendMatchingFiles(fileNameList, chatId, replayMessageId);
                     }
                     else {
@@ -159,7 +158,7 @@ public class ProcessingRegularRequestsService {
     }
 
     /**
-     * метод проверяет кол-во записей в мапе по id чата, когда оно равно 10  - создаётся новый тред и отсчет начинается заново(для экономии токенов)
+     * метод проверяет кол-во записей в мапе по id чата, когда оно равно 20  - создаётся новый тред и отсчет начинается заново(для экономии токенов)
      */
     public void addAndCleanHistoryMessage(String fromId) {
         String countStr = redisService.getUserMessageCount(fromId);
@@ -169,15 +168,15 @@ public class ProcessingRegularRequestsService {
         if (currentMessageCount == 0) {
 //            redisService.incrementUserMessageCount(fromId);
             redisService.incrementUserMessageCount(fromId, String.valueOf(currentMessageCount + 1));
-        } else if (currentMessageCount < 10) {
+        } else if (currentMessageCount < 20) {
 //            redisService.incrementUserMessageCount(fromId);
             redisService.incrementUserMessageCount(fromId, String.valueOf(currentMessageCount + 1));
-        } else if (currentMessageCount == 10) {
+        } else if (currentMessageCount == 20) {
             String summaryMessages = openAiMemoryControlService.generateManualSummary(redisService.getUserThread(fromId), fromId);
 
             deleteOldThread(fromId);
 
-            String jsonResponseCreateThread = createNewThreadWithSummary(summaryMessages);
+            String jsonResponseCreateThread = createNewThreadWithSummary(summaryMessages, fromId);
             String threadId = openAiMapper.extractIdAfterCreateResponseMessage(jsonResponseCreateThread);
 
             redisService.setUserThread(fromId, threadId);
@@ -241,7 +240,7 @@ public class ProcessingRegularRequestsService {
      * @param summary
      * @return
      */
-    public String createNewThreadWithSummary(String summary) {
+    public String createNewThreadWithSummary(String summary, String fromId) {
         try {
             // Попытка создать новый тред
             String response = webClient.post()
@@ -266,34 +265,9 @@ public class ProcessingRegularRequestsService {
                 System.out.println("Error while creating thread: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
             }
             System.out.println("Creating a new thread due to an error...");
-            return createNewThreadWithFallbackSummary(summary); // Метод для создания нового треда
+            return createThread(Long.valueOf(fromId)); // Метод для создания нового треда
         }
     }
-
-    private String createNewThreadWithFallbackSummary(String summary) {
-        // Создание нового треда с fallback-логикой или другим содержимым
-        String fallbackContent = "К сожалению, возникла ошибка. Вот альтернативный контент: " + summary;
-        try {
-            return webClient.post()
-                    .uri("/v1/threads")
-                    .header("Authorization", "Bearer " + openAiToken)
-                    .header("Content-Type", "application/json")
-                    .header("OpenAI-Beta", "assistants=v2")
-                    .bodyValue(Map.of(
-                            "messages", List.of(
-                                    Map.of("role", "assistant", "content", fallbackContent)
-                            )
-                    ))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-        } catch (WebClientResponseException e) {
-            log.error("Ошибка при создании треда: {}. Ответ API: {}", e.getMessage(), e.getResponseBodyAsString());
-            throw e;
-        }
-
-    }
-
 
     public String deleteOldThread(String fromId) {
         String threadId = redisService.getUserThread(fromId);

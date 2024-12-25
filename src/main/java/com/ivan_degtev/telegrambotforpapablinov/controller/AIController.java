@@ -40,8 +40,8 @@ public class AIController {
                 .body(response);
     }
     @PostMapping(path = "/create_thread_with_summary")
-    public ResponseEntity<String> createThreadWithSummary(@RequestBody String summary) {
-        String response = processingRegularRequestsService.createNewThreadWithSummary(summary);
+    public ResponseEntity<String> createThreadWithSummary(@RequestBody String summary, String fromId) {
+        String response = processingRegularRequestsService.createNewThreadWithSummary(summary, fromId);
         return ResponseEntity
                 .ok()
                 .body(response);
