@@ -77,13 +77,13 @@ public class ProcessingSearchRequestsService {
 
 // Поиск файлов
             for (String possibleName : possibleFileNames) {
-                boolean fileFound = filesList.stream()
-                        .anyMatch(file -> normalizeFileName(file.getName()).equalsIgnoreCase(normalizeFileName(possibleName)));
-
-                if (fileFound) {
-                    log.info("Файл найден: {}", possibleName);
-// Отправка файла в Telegram
-                    telegramWebhookConfiguration.sendDocument(chatId, new File(directoryPath + File.separator + possibleName), replyToMessageId);
+                Optional<File> foundFile = filesList.stream()
+                        .filter(file -> normalizeFileName(file.getName()).equalsIgnoreCase(normalizeFileName(possibleName)))
+                        .findFirst();
+                if (foundFile.isPresent()) {
+                    File fileToSend = foundFile.get(); // Получаем файл
+                    log.info("Файл найден: {}", fileToSend.getName());
+                    telegramWebhookConfiguration.sendDocument(chatId, new File(directoryPath + File.separator + fileToSend.getName()), replyToMessageId);
                 } else {
                     log.warn("Файл не найден: {}", possibleName);
                 }
