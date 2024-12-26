@@ -2,6 +2,8 @@ package com.ivan_degtev.telegrambotforpapablinov.service.ai;
 
 import com.ivan_degtev.telegrambotforpapablinov.component.TelegramWebhookConfiguration;
 import com.ivan_degtev.telegrambotforpapablinov.mapper.OpenAiMapper;
+import com.ivan_degtev.telegrambotforpapablinov.mapper.PdfCompressor;
+import com.ivan_degtev.telegrambotforpapablinov.mapper.WebhookMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -28,6 +30,7 @@ public class ProcessingSearchRequestsService {
     private String openAiToken;
     private final WebClient webClient;
     private final OpenAiMapper openAiMapper;
+    private final PdfCompressor pdfCompressor;
     private final TelegramWebhookConfiguration telegramWebhookConfiguration;
 
     //    private final static String PATH_FOR_SAVE_FILES = "src/main/resources/files";
@@ -36,7 +39,7 @@ public class ProcessingSearchRequestsService {
     public ProcessingSearchRequestsService(
             @Value("${openai.token}") String openAiToken,
             OpenAiMapper openAiMapper,
-            WebClient.Builder webClient,
+            WebClient.Builder webClient, PdfCompressor pdfCompressor,
             TelegramWebhookConfiguration telegramWebhookConfiguration
     ) {
         this.openAiToken = openAiToken;
@@ -44,6 +47,7 @@ public class ProcessingSearchRequestsService {
         this.webClient = webClient
                 .baseUrl("https://api.openai.com")
                 .build();
+        this.pdfCompressor = pdfCompressor;
         this.telegramWebhookConfiguration = telegramWebhookConfiguration;
     }
 
@@ -72,7 +76,7 @@ public class ProcessingSearchRequestsService {
                     .filter(File::isFile)
                     .collect(Collectors.toList());
 
-// Логируем все файлы в директории
+
 // filesList.forEach(file -> log.info("Файл в директории: {}", file.getName()));
 
 // Поиск файлов
@@ -80,10 +84,30 @@ public class ProcessingSearchRequestsService {
                 Optional<File> foundFile = filesList.stream()
                         .filter(file -> normalizeFileName(file.getName()).equalsIgnoreCase(normalizeFileName(possibleName)))
                         .findFirst();
+
                 if (foundFile.isPresent()) {
-                    File fileToSend = foundFile.get(); // Получаем файл
+                    File fileToSend = foundFile.get();
                     log.info("Файл найден: {}", fileToSend.getName());
-                    telegramWebhookConfiguration.sendDocument(chatId, new File(directoryPath + File.separator + fileToSend.getName()), replyToMessageId);
+
+                    // Проверяем размер файла
+                    if (fileToSend.length() > 50 * 1024 * 1024) { // Если файл больше 50 MB
+                        log.warn("Файл слишком большой, начинаем сжатие: {}", fileToSend.getName());
+                        String compressedFilePath = directoryPath + File.separator + "compressed_" + fileToSend.getName();
+
+                        try {
+                            File compressedFile = pdfCompressor.compressPdfWithImages(fileToSend, compressedFilePath);
+                            if (compressedFile.length() > 50 * 1024 * 1024) {
+                                log.warn("Файл слишком большой после сжатия: {}", fileToSend.getName());
+                            }
+                            log.info("Сжатый файл создан: {}", compressedFile.getName());
+                            telegramWebhookConfiguration.sendDocument(chatId, compressedFile, replyToMessageId);
+                        } catch (IOException e) {
+                            log.error("Ошибка при сжатии файла: {}", e.getMessage());
+                        }
+                    } else {
+                        // Если файл не большой, отправляем оригинал
+                        telegramWebhookConfiguration.sendDocument(chatId, fileToSend, replyToMessageId);
+                    }
                 } else {
                     log.warn("Файл не найден: {}", possibleName);
                 }
